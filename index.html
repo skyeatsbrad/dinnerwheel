@@ -887,6 +887,20 @@ function showResult(win, idx){
   $('overlay').classList.add('show');
 }
 
+/* Open an external URL reliably. In a Capacitor (Android) WebView, plain
+   target="_blank"/window.open links don't launch the browser or Maps app, so route
+   through @capacitor/app's openUrl. On the plain web/PWA, fall back to a new tab. */
+function openExternal(url){
+  try{
+    const C=window.Capacitor;
+    if(C && typeof C.isNativePlatform==='function' && C.isNativePlatform()){
+      const App=(C.Plugins && C.Plugins.App) || (typeof C.registerPlugin==='function' && C.registerPlugin('App'));
+      if(App && App.openUrl){ App.openUrl({url}); return; }
+    }
+  }catch(e){ /* fall through to web behaviour */ }
+  window.open(url,'_blank','noopener');
+}
+
 function renderPlace(banner, body, win){
   banner.innerHTML='';
   banner.innerHTML=`<span class="winemoji">${win.emoji||'🍴'}</span>
@@ -909,12 +923,22 @@ function renderPlace(banner, body, win){
       [...state.restrictions].map(k=>DIETS.find(d=>d.key===k).label).join(', ')+' options.';
     body.appendChild(note);
   }
-  if(win.lat){
+  const addLink=(label,url,icon)=>{
     const a=document.createElement('a');
-    a.className='maplink'; a.target='_blank'; a.rel='noopener';
-    a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(win.label)+'%20'+win.lat+','+win.lon;
-    a.innerHTML='🗺️ Open in Google Maps →';
+    a.className='maplink'; a.href=url;
+    a.innerHTML=icon+' '+escapeHtml(label)+' →';
+    a.addEventListener('click',e=>{ e.preventDefault(); openExternal(url); });
     body.appendChild(a);
+  };
+  if(win.lat){
+    const dest=win.lat+','+win.lon;
+    addLink('Get Directions',
+      'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(dest)+'&travelmode=driving','🧭');
+    addLink('View on Map',
+      'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(win.label+' '+dest),'🗺️');
+  } else if(state.loc){
+    addLink('Find '+win.label+' nearby',
+      'https://www.google.com/maps/search/'+encodeURIComponent(win.label)+'/@'+state.loc.lat+','+state.loc.lon+',14z','🧭');
   }
 }
 
