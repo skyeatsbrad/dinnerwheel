@@ -544,11 +544,22 @@ function setLocStatus(msg,cls){ const e=$('locStatus'); e.textContent=msg; e.cla
 
 $('useLoc').onclick=()=>{
   audio();
+  if(!window.isSecureContext){
+    setLocStatus('📍 GPS needs a secure https:// connection. Type your city or ZIP below instead 👇','err');
+    $('manualLoc').focus();
+    return;
+  }
   if(!navigator.geolocation){ setLocStatus('Geolocation not supported — type a place instead.','err'); return; }
   setLocStatus('📡 Locating you…');
   navigator.geolocation.getCurrentPosition(
     p=>{ state.loc={lat:p.coords.latitude, lon:p.coords.longitude}; setLocStatus('📍 Located! Finding nearby spots…','ok'); refetch(); },
-    err=>{ setLocStatus('Couldn\u2019t get GPS ('+err.message+'). Type a city/ZIP, or spin popular picks.','err'); },
+    err=>{
+      const insecure=/secure|origin/i.test(err.message||'');
+      setLocStatus(insecure
+        ? '📍 GPS needs https:// — type your city or ZIP below instead 👇'
+        : 'Couldn\u2019t get GPS ('+err.message+'). Type a city/ZIP, or spin popular picks.','err');
+      $('manualLoc').focus();
+    },
     {enableHighAccuracy:true, timeout:9000, maximumAge:60000}
   );
 };
@@ -987,6 +998,7 @@ console.log('%cTry: the Konami code · type "pizza" / "taco" / "cat" · click th
    ============================================================ */
 updateVeto();
 buildWheel();      // starts with popular picks until a location is set
+if(!window.isSecureContext){ setLocStatus('Heads up: GPS needs a secure https:// connection. On http, type your city or ZIP below 👇 (or just spin the popular picks).'); }
 window.addEventListener('load', ()=>{ fitWheel(); drawWheel(); });
 </script>
 </body>
