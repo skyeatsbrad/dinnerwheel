@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🍽️ What's For Dinner?! — The Decision Wheel</title>
+<style>
+  :root{
+    --black:#000000;
+    --bg:#05070d;
+    --bg2:#0a1020;
+    --baby:#89CFF0;          /* mandatory baby blue */
+    --baby-soft:#bde0fe;
+    --baby-deep:#48cae4;
+    --baby-navy:#0c1c33;
+    --baby-navy2:#0a1626;
+    --text:#eaf6ff;
+    --muted:#93b9d4;
+    --glow:rgba(137,207,240,.65);
+    --glow-soft:rgba(137,207,240,.25);
+    --danger:#ff5d7a;
+    --good:#5ef3a0;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",Aptos,Calibri,-apple-system,BlinkMacSystemFont,sans-serif;
+    background:var(--black);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+  /* animated starfield / particle canvas */
+  #bgfx{position:fixed;inset:0;z-index:0;display:block}
+  .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 30%, transparent 40%, rgba(0,0,0,.65) 100%);}
+  .wrap{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:26px 18px 70px}
+
+  /* ---------- header ---------- */
+  header{text-align:center;margin:8px 0 22px}
+  .title{
+    font-size:clamp(2.1rem,6vw,4.4rem);
+    font-weight:900;letter-spacing:1px;line-height:1;
+    margin:0;cursor:pointer;user-select:none;display:inline-block;
+    color:var(--baby);
+    text-shadow:0 0 6px var(--glow),0 0 22px var(--glow),0 0 50px rgba(72,202,228,.5);
+    animation:flicker 5.5s infinite;
+    transition:transform .15s ease;
+  }
+  .title .pop{display:inline-block;animation:bob 3s ease-in-out infinite}
+  .title:hover{transform:scale(1.02)}
+  .title.wobble{animation:wobble .6s ease}
+  @keyframes wobble{0%,100%{transform:rotate(0)}20%{transform:rotate(-4deg) scale(1.05)}40%{transform:rotate(4deg)}60%{transform:rotate(-3deg)}80%{transform:rotate(2deg)}}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  @keyframes flicker{0%,18%,22%,25%,53%,57%,100%{opacity:1}20%,24%,55%{opacity:.72}}
+  .sub{margin:10px 0 0;color:var(--muted);font-size:clamp(.85rem,2vw,1.05rem);letter-spacing:.5px}
+  .sub b{color:var(--baby-soft)}
+
+  /* ---------- layout ---------- */
+  .stage{display:grid;grid-template-columns:340px 1fr;gap:22px;align-items:start}
+  @media(max-width:880px){.stage{grid-template-columns:1fr}}
+
+  .card{
+    background:linear-gradient(160deg,rgba(12,28,51,.92),rgba(5,12,24,.92));
+    border:1px solid rgba(137,207,240,.28);
+    border-radius:var(--radius);
+    box-shadow:0 0 0 1px rgba(0,0,0,.4),0 14px 40px rgba(0,0,0,.55),0 0 26px rgba(137,207,240,.12) inset;
+    padding:18px 18px 20px;
+    backdrop-filter:blur(6px);
+  }
+  .card h2{margin:0 0 12px;font-size:1.02rem;letter-spacing:.6px;color:var(--baby-soft);
+    text-transform:uppercase;display:flex;align-items:center;gap:8px}
+  .card h2 .em{font-size:1.2rem}
+
+  label.lbl{display:block;font-size:.8rem;color:var(--muted);margin:14px 0 6px;letter-spacing:.4px;text-transform:uppercase}
+
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:inherit;font-weight:800;
+    border-radius:12px;padding:12px 16px;font-size:.95rem;letter-spacing:.4px;
+    background:linear-gradient(135deg,var(--baby),var(--baby-deep));
+    color:#03121f;
+    box-shadow:0 6px 18px rgba(72,202,228,.35),0 0 0 1px rgba(255,255,255,.15) inset;
+    transition:transform .12s ease,box-shadow .2s ease,filter .2s ease;
+    width:100%;
+  }
+  .btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(72,202,228,.5)}
+  .btn:active{transform:translateY(0) scale(.98)}
+  .btn:disabled{filter:grayscale(.7) brightness(.7);cursor:not-allowed;transform:none}
+  .btn.ghost{background:transparent;color:var(--baby);border:1px solid rgba(137,207,240,.45);box-shadow:none}
+  .btn.ghost:hover{background:rgba(137,207,240,.1)}
+  .btn.danger{background:linear-gradient(135deg,#ff7a93,#ff3d63);color:#1a0006}
+  .btn.row{width:auto;display:inline-block}
+  .btnrow{display:flex;gap:10px;margin-top:10px}
+  .btnrow .btn{width:100%}
+
+  .loc-input{display:flex;gap:8px;margin-top:10px}
+  input[type=text]{
+    flex:1;background:rgba(0,0,0,.5);border:1px solid rgba(137,207,240,.35);
+    color:var(--text);border-radius:10px;padding:11px 12px;font-family:inherit;font-size:.92rem;outline:none;min-width:0;
+  }
+  input[type=text]:focus{border-color:var(--baby);box-shadow:0 0 0 3px var(--glow-soft)}
+  .status{font-size:.82rem;color:var(--muted);margin-top:10px;min-height:1.1em;line-height:1.4}
+  .status.ok{color:var(--good)}
+  .status.err{color:var(--danger)}
+
+  /* slider */
+  .rangewrap{display:flex;align-items:center;gap:12px}
+  input[type=range]{flex:1;-webkit-appearance:none;height:6px;border-radius:6px;
+    background:linear-gradient(90deg,var(--baby),var(--baby-deep));outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;
+    background:#eaf6ff;border:3px solid var(--baby-deep);cursor:pointer;box-shadow:0 0 10px var(--glow)}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#eaf6ff;border:3px solid var(--baby-deep);cursor:pointer}
+  .rangeval{min-width:70px;text-align:right;font-weight:800;color:var(--baby-soft);font-variant-numeric:tabular-nums}
+
+  /* diet chips */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .chip{
+    cursor:pointer;user-select:none;font-size:.82rem;font-weight:700;
+    padding:8px 12px;border-radius:999px;border:1px solid rgba(137,207,240,.4);
+    background:rgba(137,207,240,.06);color:var(--baby-soft);transition:all .15s ease;
+    display:flex;align-items:center;gap:6px;
+  }
+  .chip:hover{border-color:var(--baby);transform:translateY(-1px)}
+  .chip.active{background:linear-gradient(135deg,var(--baby),var(--baby-deep));color:#04121f;border-color:transparent;box-shadow:0 4px 14px rgba(72,202,228,.4)}
+  .chip input{display:none}
+
+  /* ---------- wheel ---------- */
+  .wheelcard{display:flex;flex-direction:column;align-items:center;min-height:520px;justify-content:center}
+  .wheel-stage{position:relative;width:min(86vw,540px);aspect-ratio:1/1;margin:6px auto 4px}
+  #wheel{width:100%;height:100%;display:block;border-radius:50%;
+    box-shadow:0 0 0 10px rgba(5,12,24,.9),0 0 0 13px var(--baby),0 0 40px var(--glow),0 0 90px rgba(72,202,228,.35);
+    transition:filter .2s}
+  .wheel-stage.spinning #wheel{filter:saturate(1.2)}
+  /* pointer */
+  .pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);z-index:6;
+    width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;
+    border-top:36px solid var(--baby);filter:drop-shadow(0 4px 8px rgba(0,0,0,.6)) drop-shadow(0 0 10px var(--glow))}
+  /* center spin button */
+  .spinbtn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:7;
+    width:25%;height:25%;border-radius:50%;border:none;cursor:pointer;font-weight:900;
+    font-size:clamp(.9rem,3vw,1.35rem);letter-spacing:1px;color:#03121f;font-family:inherit;
+    background:radial-gradient(circle at 35% 30%,#ffffff,var(--baby) 55%,var(--baby-deep));
+    box-shadow:0 0 0 6px var(--black),0 0 0 9px var(--baby),0 8px 24px rgba(0,0,0,.6),0 0 30px var(--glow);
+    transition:transform .12s ease,box-shadow .2s ease}
+  .spinbtn:hover{transform:translate(-50%,-50%) scale(1.06)}
+  .spinbtn:active{transform:translate(-50%,-50%) scale(.94)}
+  .spinbtn:disabled{cursor:not-allowed;filter:brightness(.8)}
+  .spinbtn .arrow{display:block;font-size:.7em;opacity:.85}
+
+  .wheelmeta{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:6px}
+  .veto-ind{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.92rem;color:var(--baby-soft)}
+  .veto-ind .tok{font-size:1.25rem;filter:drop-shadow(0 0 6px var(--glow))}
+  .veto-ind.used{color:var(--muted);opacity:.7}
+  .spincount{font-size:.82rem;color:var(--muted)}
+  .empty-hint{color:var(--muted);text-align:center;max-width:340px;margin:0 auto;line-height:1.5}
+
+  /* ---------- result modal ---------- */
+  .overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:18px;
+    background:rgba(2,5,12,.78);backdrop-filter:blur(5px)}
+  .overlay.show{display:flex;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .result{max-width:640px;width:100%;max-height:90vh;overflow:auto;
+    border:1px solid rgba(137,207,240,.4);border-radius:20px;position:relative;
+    background:linear-gradient(165deg,#0c1c33,#05101f);
+    box-shadow:0 0 60px rgba(72,202,228,.4),0 30px 80px rgba(0,0,0,.7);
+    animation:pop .4s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes pop{from{transform:scale(.7) translateY(30px);opacity:0}to{transform:scale(1);opacity:1}}
+  .result .banner{padding:26px 26px 18px;text-align:center;position:relative;overflow:hidden;
+    background:linear-gradient(135deg,rgba(137,207,240,.22),rgba(72,202,228,.06))}
+  .result .winemoji{font-size:3.4rem;display:block;animation:bob 2s ease-in-out infinite;filter:drop-shadow(0 0 14px var(--glow))}
+  .result .kicker{color:var(--baby);font-weight:800;letter-spacing:2px;text-transform:uppercase;font-size:.78rem;margin:8px 0 2px}
+  .result h3{margin:2px 0 4px;font-size:1.7rem;color:#fff;text-shadow:0 0 18px var(--glow)}
+  .result .tag{display:inline-block;font-size:.78rem;color:var(--baby-soft);background:rgba(137,207,240,.12);
+    border:1px solid rgba(137,207,240,.3);padding:4px 10px;border-radius:999px;margin:4px 3px 0}
+  .result .body{padding:18px 24px 22px}
+  .result .body p{color:var(--muted);line-height:1.55;margin:.2em 0 1em}
+  .reslist{margin:0;padding:0;list-style:none}
+  .reslist li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed rgba(137,207,240,.14);color:var(--text);font-size:.94rem}
+  .reslist.steps{counter-reset:s}
+  .reslist.steps li{counter-increment:s}
+  .reslist.steps li::before{content:counter(s);flex:0 0 24px;height:24px;border-radius:50%;background:var(--baby);color:#04121f;font-weight:900;font-size:.8rem;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .reslist.shop li{cursor:pointer}
+  .reslist.shop li .box{flex:0 0 20px;height:20px;border-radius:6px;border:2px solid var(--baby-deep);margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#04121f;background:transparent;transition:all .15s}
+  .reslist.shop li.checked .box{background:var(--baby);}
+  .reslist.shop li.checked span{text-decoration:line-through;opacity:.55}
+  .sec-title{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px;color:var(--baby-soft);font-weight:800;letter-spacing:.5px;font-size:.95rem}
+  .sec-title .mini{font-size:.78rem;font-weight:700}
+  .res-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+  .res-actions .btn{flex:1;min-width:140px}
+  .closeX{position:absolute;top:12px;right:14px;z-index:9;background:rgba(0,0,0,.3);border:1px solid rgba(137,207,240,.3);
+    color:var(--baby-soft);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:1.1rem;line-height:1}
+  .closeX:hover{background:rgba(137,207,240,.15)}
+  .maplink{color:var(--baby);text-decoration:none;font-weight:700}
+  .maplink:hover{text-decoration:underline}
+
+  /* toast */
+  #toasts{position:fixed;z-index:80;left:50%;bottom:24px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none}
+  .toast{background:linear-gradient(135deg,var(--baby),var(--baby-deep));color:#04121f;font-weight:800;
+    padding:12px 20px;border-radius:999px;box-shadow:0 8px 30px rgba(0,0,0,.5),0 0 20px var(--glow);
+    animation:toastin .4s cubic-bezier(.2,1.4,.4,1);max-width:90vw;text-align:center}
+  @keyframes toastin{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  footer{margin-top:34px;text-align:center;color:var(--muted);font-size:.8rem;line-height:1.6}
+  footer kbd{background:rgba(137,207,240,.12);border:1px solid rgba(137,207,240,.3);border-radius:6px;padding:1px 7px;color:var(--baby-soft);font-family:Consolas,monospace;font-size:.78rem}
+  .hint-egg{opacity:.6;cursor:help}
+
+  /* floating emoji layer */
+  #falls{position:fixed;inset:0;z-index:70;pointer-events:none;overflow:hidden}
+  .fall{position:absolute;top:-60px;font-size:2rem;animation:falldown linear forwards;will-change:transform}
+  @keyframes falldown{to{transform:translateY(115vh) rotate(540deg)}}
+  /* secret cat */
+  #cat{position:fixed;bottom:8px;left:-80px;z-index:65;font-size:2.4rem;pointer-events:none;display:none}
+  #cat.run{display:block;animation:catrun 6s linear forwards}
+  @keyframes catrun{to{left:110vw}}
+
+  .spark{position:fixed;z-index:75;pointer-events:none;font-size:1.2rem;animation:spark .9s ease-out forwards}
+  @keyframes spark{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+</style>
+</head>
+<body>
+<canvas id="bgfx"></canvas>
+<div class="vignette"></div>
+
+<div class="wrap">
+  <header>
+    <h1 class="title" id="title"><span class="pop">🍽️</span> WHAT'S FOR DINNER?!</h1>
+    <p class="sub">Spin the wheel of destiny. <b>Takeout</b>, <b>fast food</b>, or <b>cook at home</b> — let fate decide tonight's feast.</p>
+  </header>
+
+  <div class="stage">
+    <!-- ---------------- controls ---------------- -->
+    <div class="card" id="controls">
+      <h2><span class="em">📍</span> Where & What</h2>
+
+      <label class="lbl">Your location</label>
+      <button class="btn" id="useLoc">📡 Use My Location</button>
+      <div class="loc-input">
+        <input type="text" id="manualLoc" placeholder="…or type a city / ZIP" autocomplete="off" />
+        <button class="btn row" id="goManual" style="width:auto;padding:11px 14px">Go</button>
+      </div>
+      <div class="status" id="locStatus">No location yet — use GPS, type a place, or just spin the popular picks.</div>
+
+      <label class="lbl">Search distance: <span class="rangeval" id="distVal">5 mi</span></label>
+      <div class="rangewrap">
+        <input type="range" id="dist" min="1" max="30" value="5" />
+      </div>
+
+      <label class="lbl">🥗 Dietary &amp; allergy filters</label>
+      <div class="chips" id="diet"></div>
+
+      <div class="btnrow">
+        <button class="btn ghost" id="reload">🔄 Rebuild Wheel</button>
+      </div>
+      <div class="status" id="buildStatus" style="margin-top:14px"></div>
+    </div>
+
+    <!-- ---------------- wheel ---------------- -->
+    <div class="card wheelcard">
+      <div class="wheel-stage" id="wheelStage">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="540" height="540"></canvas>
+        <button class="spinbtn" id="spin">SPIN<span class="arrow">▾</span></button>
+      </div>
+      <div class="wheelmeta">
+        <div class="veto-ind" id="vetoInd"><span class="tok">🛡️</span> <span id="vetoTxt">1 veto ready</span></div>
+        <div class="spincount" id="spinCount">Spins: 0</div>
+      </div>
+      <div class="empty-hint" id="emptyHint" style="display:none"></div>
+    </div>
+  </div>
+
+  <footer>
+    🔎 Restaurant data from OpenStreetMap. Cook-at-home recipes are curated trending picks.<br/>
+    <span class="hint-egg" title="There may be more than you think… try the Konami code, or type a cheesy word 👀">Psst — this page is hiding a few 🥚 easter eggs.</span><br/>
+    Tip: press <kbd>↑↑↓↓←→←→ B A</kbd> for a little surprise.
+  </footer>
+</div>
+
+<!-- result modal -->
+<div class="overlay" id="overlay">
+  <div class="result" id="result">
+    <button class="closeX" id="closeRes" title="Close">✕</button>
+    <div class="banner" id="resBanner"></div>
+    <div class="body" id="resBody"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<div id="falls"></div>
+<div id="cat">🐈‍⬛</div>
+
+<script>
+/* ============================================================
+   WHAT'S FOR DINNER — single-file decision wheel
+   ============================================================ */
+const TAU = Math.PI * 2;
+const $ = (id) => document.getElementById(id);
+
+/* ---------- state ---------- */
+const state = {
+  loc: null,                 // {lat, lon}
+  distance: 5,               // miles
+  restrictions: new Set(),   // active diet flags
+  segments: [],              // current wheel options
+  spinning: false,
+  rotation: 0,
+  vetoAvailable: 1,
+  vetoMax: 1,
+  spins: 0,
+  lastFetch: [],             // cached restaurants
+};
+
+/* ---------- dietary options ---------- */
+const DIETS = [
+  {key:'vegetarian', label:'Vegetarian', em:'🥦'},
+  {key:'vegan',      label:'Vegan',      em:'🌱'},
+  {key:'glutenFree', label:'Gluten-Free',em:'🌾'},
+  {key:'dairyFree',  label:'Dairy-Free', em:'🥛'},
+  {key:'nutFree',    label:'Nut-Free',   em:'🥜'},
+  {key:'eggFree',    label:'Egg-Free',   em:'🥚'},
+  {key:'shellfishFree',label:'Shellfish-Free',em:'🦐'},
+  {key:'halal',      label:'Halal',      em:'🕌'},
+];
+
+/* ---------- cuisine -> emoji ---------- */
+const CUISINE_EMOJI = {
+  burger:'🍔', pizza:'🍕', mexican:'🌮', italian:'🍝', chinese:'🥡',
+  japanese:'🍣', sushi:'🍣', thai:'🍜', vietnamese:'🍜', indian:'🍛',
+  sandwich:'🥪', chicken:'🍗', coffee:'☕', cafe:'☕', breakfast:'🥞',
+  seafood:'🦐', barbecue:'🍖', bbq:'🍖', american:'🍟', kebab:'🥙',
+  greek:'🥙', korean:'🍲', noodle:'🍜', donut:'🍩', dessert:'🍰',
+  ice_cream:'🍦', bakery:'🥐', steak:'🥩', ramen:'🍜', salad:'🥗',
+  vegetarian:'🥗', vegan:'🥗', fish:'🐟', asian:'🥢',
+};
+function cuisineEmoji(c){
+  if(!c) return '🍴';
+  const first = String(c).split(';')[0].trim().toLowerCase().replace(/\s+/g,'_');
+  return CUISINE_EMOJI[first] || '🍴';
+}
+function prettyCuisine(c){
+  if(!c) return 'Restaurant';
+  return String(c).split(';')[0].trim().replace(/_/g,' ').replace(/\b\w/g,m=>m.toUpperCase());
+}
+
+/* ---------- fallback chains (used if no location / fetch fails) ---------- */
+const FALLBACK = [
+  {label:"McDonald's", cuisine:'burger'}, {label:'Chipotle', cuisine:'mexican'},
+  {label:'Domino\u2019s Pizza', cuisine:'pizza'}, {label:'Panda Express', cuisine:'chinese'},
+  {label:'Subway', cuisine:'sandwich'}, {label:'Chick-fil-A', cuisine:'chicken'},
+  {label:'Taco Bell', cuisine:'mexican'}, {label:'Five Guys', cuisine:'burger'},
+  {label:'Panera Bread', cuisine:'sandwich'}, {label:'Olive Garden', cuisine:'italian'},
+  {label:'Local Sushi Bar', cuisine:'sushi'}, {label:'Thai Place', cuisine:'thai'},
+  {label:'Wendy\u2019s', cuisine:'burger'}, {label:'Local Indian Kitchen', cuisine:'indian'},
+];
+
+/* ---------- trending cook-at-home recipes ---------- */
+/* tags = what the recipe SATISFIES. eligible if recipe[flag] for every selected restriction. */
+const RECIPES = [
+  {name:'Marry Me Chicken', em:'🍗', time:'35 min', trend:'TikTok famous',
+   desc:'Creamy sun-dried tomato chicken so good they might propose.',
+   tags:{vegetarian:0,vegan:0,glutenFree:1,dairyFree:0,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['4 chicken breasts','1 cup heavy cream','1/2 cup chicken broth','1/3 cup sun-dried tomatoes','1/2 cup grated parmesan','3 garlic cloves','1 tsp Italian seasoning','1 tsp paprika','2 tbsp olive oil','Fresh basil','Salt & pepper'],
+   steps:['Season chicken with salt, pepper and paprika.','Sear in olive oil ~5 min per side; set aside.','Sauté garlic, then add broth, cream, sun-dried tomatoes, parmesan and Italian seasoning.','Simmer until thick; nestle chicken back in.','Cook 8–10 min, finish with basil. Serve over pasta or rice.']},
+
+  {name:'Baked Feta Pasta', em:'🧀', time:'40 min', trend:'Viral classic',
+   desc:'A block of feta + tomatoes roasted into a silky sauce.',
+   tags:{vegetarian:1,vegan:0,glutenFree:0,dairyFree:0,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['1 block (8 oz) feta','2 cups cherry tomatoes','1/3 cup olive oil','3 garlic cloves','12 oz pasta','Fresh basil','Red pepper flakes','Salt & pepper'],
+   steps:['Add tomatoes + feta block to a baking dish, drizzle oil, salt, pepper.','Roast 400°F / 200°C for 30 min until bubbly.','Boil pasta; reserve some pasta water.','Stir roasted feta + tomatoes + garlic into a sauce.','Toss with pasta, loosen with pasta water, top with basil.']},
+
+  {name:'Korean Beef Bowl', em:'🥩', time:'20 min', trend:'Weeknight hit',
+   desc:'Sweet-savory ground beef over rice in 20 minutes flat.',
+   tags:{vegetarian:0,vegan:0,glutenFree:0,dairyFree:1,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['1 lb ground beef','1/3 cup soy sauce','3 tbsp brown sugar','4 garlic cloves','1 tbsp sesame oil','1 tsp ginger','Green onions','Sesame seeds','2 cups cooked rice'],
+   steps:['Brown beef in sesame oil; drain.','Add garlic + ginger, cook 1 min.','Stir in soy sauce + brown sugar; simmer 3–4 min.','Serve over rice, top with green onion and sesame.']},
+
+  {name:'Chickpea Coconut Curry', em:'🍛', time:'30 min', trend:'Cozy & plant-based',
+   desc:'Creamy, fragrant vegan curry that tastes like takeout.',
+   tags:{vegetarian:1,vegan:1,glutenFree:1,dairyFree:1,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['2 cans chickpeas','1 can coconut milk','1 onion','3 garlic cloves','2 tbsp curry powder','1 can diced tomatoes','1 tbsp ginger','Spinach','Rice to serve','Oil, salt'],
+   steps:['Sauté onion, garlic, ginger in oil.','Add curry powder; toast 30 sec.','Add tomatoes, coconut milk and chickpeas.','Simmer 15 min; stir in spinach until wilted.','Serve over rice.']},
+
+  {name:'Smash Burgers', em:'🍔', time:'25 min', trend:'Always trending',
+   desc:'Crispy-edged diner-style smash burgers at home.',
+   tags:{vegetarian:0,vegan:0,glutenFree:0,dairyFree:0,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['1 lb ground beef (80/20)','4 burger buns','4 slices American cheese','1 onion','Pickles','Ketchup & mustard','Salt & pepper','Butter for buns'],
+   steps:['Roll beef into 4 loose balls.','Smash hard on a screaming-hot griddle; season.','Flip at 2 min, add cheese.','Toast buttered buns.','Build with onion, pickles and sauce.']},
+
+  {name:'Butter Chicken', em:'🍛', time:'45 min', trend:'Restaurant favorite',
+   desc:'Rich, mildly spiced tomato-cream chicken curry.',
+   tags:{vegetarian:0,vegan:0,glutenFree:1,dairyFree:0,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['1.5 lb chicken thighs','1 cup heavy cream','1 can tomato sauce','2 tbsp butter','1 onion','4 garlic cloves','2 tbsp garam masala','1 tbsp ginger','1 tsp paprika','Rice or naan'],
+   steps:['Brown chicken in butter; set aside.','Sauté onion, garlic, ginger.','Add spices + tomato sauce; simmer 10 min.','Stir in cream; return chicken; simmer 15 min.','Serve with rice or naan.']},
+
+  {name:'Crispy Sheet-Pan Gnocchi', em:'🥔', time:'30 min', trend:'No-boil dinner',
+   desc:'Roasted gnocchi + veggies, crispy outside, pillowy inside.',
+   tags:{vegetarian:1,vegan:1,glutenFree:0,dairyFree:1,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['1 lb shelf-stable gnocchi','1 pint cherry tomatoes','1 zucchini','1 bell pepper','3 tbsp olive oil','2 garlic cloves','Italian seasoning','Salt & pepper','Fresh basil'],
+   steps:['Toss gnocchi + chopped veg with oil and seasoning.','Spread on a sheet pan.','Roast 425°F / 220°C for 25 min, tossing once.','Finish with garlic and basil.']},
+
+  {name:'Salmon Rice Bowl', em:'🍣', time:'20 min', trend:'Viral crispy-rice bowl',
+   desc:'Flaky salmon, warm rice, spicy mayo — pescatarian gold.',
+   tags:{vegetarian:0,vegan:0,glutenFree:1,dairyFree:1,nutFree:1,eggFree:0,shellfishFree:1,halal:1},
+   shop:['2 salmon fillets','2 cups cooked rice','1/4 cup mayo','1–2 tbsp sriracha','1 tbsp soy sauce (tamari for GF)','1 avocado','Cucumber','Sesame seeds','Green onion'],
+   steps:['Flake cooked salmon over warm rice.','Mix mayo + sriracha for spicy mayo.','Top bowl with avocado, cucumber, green onion.','Drizzle spicy mayo + soy; finish with sesame.']},
+
+  {name:'Gochujang Buttered Noodles', em:'🍜', time:'15 min', trend:'Spicy & fast',
+   desc:'Glossy, spicy-sweet noodles in one pan, 15 minutes.',
+   tags:{vegetarian:1,vegan:0,glutenFree:0,dairyFree:0,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['8 oz noodles','2 tbsp gochujang','2 tbsp butter','1 tbsp soy sauce','1 tbsp honey','2 garlic cloves','Green onion','Sesame seeds'],
+   steps:['Cook noodles; reserve 1/2 cup water.','Melt butter, add garlic + gochujang + soy + honey.','Toss noodles in sauce, loosen with pasta water.','Top with green onion and sesame.']},
+
+  {name:'Garlic Parmesan Chicken Pasta', em:'🍝', time:'35 min', trend:'Comfort crowd-pleaser',
+   desc:'Creamy garlic-parm sauce clinging to every noodle.',
+   tags:{vegetarian:0,vegan:0,glutenFree:0,dairyFree:0,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['2 chicken breasts','12 oz pasta','1 cup heavy cream','3/4 cup parmesan','5 garlic cloves','2 tbsp butter','Parsley','Salt & pepper'],
+   steps:['Season + sear sliced chicken; set aside.','Sauté garlic in butter.','Add cream + parmesan; simmer to thicken.','Toss with cooked pasta and chicken; finish with parsley.']},
+
+  {name:'Cottage Cheese Flatbread', em:'🫓', time:'40 min', trend:'High-protein viral',
+   desc:'2-ingredient high-protein flatbread, endlessly toppable.',
+   tags:{vegetarian:1,vegan:0,glutenFree:1,dairyFree:0,nutFree:1,eggFree:0,shellfishFree:1,halal:1},
+   shop:['1 cup cottage cheese','1 egg','Everything bagel seasoning','Toppings of choice (cheese, veg)'],
+   steps:['Blend cottage cheese + egg until smooth.','Spread thin on parchment-lined tray; season.','Bake 350°F / 175°C for 30–35 min until set.','Add toppings; broil briefly if desired.']},
+
+  {name:'Birria Tacos', em:'🌮', time:'2 hr', trend:'The famous dippy tacos',
+   desc:'Slow-braised beef tacos with a rich consommé for dunking.',
+   tags:{vegetarian:0,vegan:0,glutenFree:1,dairyFree:1,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['3 lb chuck roast','4 dried guajillo chiles','2 dried ancho chiles','1 onion','5 garlic cloves','2 tbsp cumin','1 tbsp oregano','Corn tortillas','Beef broth','Cilantro & lime'],
+   steps:['Toast + soak chiles; blend with garlic, onion, spices, broth.','Braise beef in the sauce 2 hr until shreddable.','Shred beef; skim the red consommé.','Dip tortillas in fat, fill, crisp on a griddle.','Serve with cilantro, onion, lime and consommé to dip.']},
+
+  {name:'Vegan Buddha Bowl', em:'🥗', time:'30 min', trend:'Meal-prep staple',
+   desc:'Roasted veg, quinoa and a creamy tahini drizzle.',
+   tags:{vegetarian:1,vegan:1,glutenFree:1,dairyFree:1,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['1 cup quinoa','1 can chickpeas','1 sweet potato','Broccoli','2 tbsp tahini','1 lemon','2 tbsp olive oil','Garlic powder','Salt & pepper','Spinach'],
+   steps:['Cook quinoa.','Roast sweet potato, broccoli and chickpeas with oil + spices, 425°F / 220°C, 25 min.','Whisk tahini + lemon + water into a dressing.','Build bowls over spinach; drizzle dressing.']},
+
+  {name:'Tomato Soup & Grilled Cheese', em:'🍅', time:'30 min', trend:'Nostalgic comfort',
+   desc:'Velvety tomato soup with a crispy, gooey grilled cheese.',
+   tags:{vegetarian:1,vegan:0,glutenFree:0,dairyFree:0,nutFree:1,eggFree:1,shellfishFree:1,halal:1},
+   shop:['2 cans whole tomatoes','1 onion','2 garlic cloves','1 cup cream or milk','Butter','8 slices bread','Cheddar or American cheese','Basil','Salt & pepper'],
+   steps:['Sauté onion + garlic in butter.','Add tomatoes; simmer 15 min, then blend.','Stir in cream; season.','Griddle buttered bread + cheese until golden.','Dunk and enjoy.']},
+
+  {name:'Lemon Garlic Shrimp Pasta', em:'🦐', time:'25 min', trend:'Date-night easy',
+   desc:'Bright, buttery garlic shrimp tossed with pasta.',
+   tags:{vegetarian:0,vegan:0,glutenFree:0,dairyFree:0,nutFree:1,eggFree:1,shellfishFree:0,halal:1},
+   shop:['1 lb shrimp','12 oz linguine','4 tbsp butter','5 garlic cloves','1 lemon','Red pepper flakes','Parsley','Parmesan','Salt & pepper'],
+   steps:['Cook pasta; reserve water.','Sauté garlic in butter; add shrimp 2 min/side.','Add lemon juice + pepper flakes.','Toss with pasta + a splash of water; finish with parsley and parmesan.']},
+];
+
+/* ============================================================
+   BACKGROUND PARTICLES
+   ============================================================ */
+const bg = $('bgfx'), bgx = bg.getContext('2d');
+let stars = [];
+function sizeBg(){
+  bg.width = innerWidth; bg.height = innerHeight;
+  const n = Math.floor((innerWidth*innerHeight)/9000);
+  stars = Array.from({length:n}, () => ({
+    x:Math.random()*bg.width, y:Math.random()*bg.height,
+    r:Math.random()*1.8+0.3, s:Math.random()*0.35+0.05,
+    a:Math.random()*0.6+0.2, tw:Math.random()*TAU,
+  }));
+}
+function drawBg(t){
+  bgx.clearRect(0,0,bg.width,bg.height);
+  const g = bgx.createLinearGradient(0,0,bg.width,bg.height);
+  g.addColorStop(0,'#04070f'); g.addColorStop(.5,'#070d1c'); g.addColorStop(1,'#04070f');
+  bgx.fillStyle=g; bgx.fillRect(0,0,bg.width,bg.height);
+  for(const s of stars){
+    s.y += s.s; if(s.y>bg.height){s.y=-2;s.x=Math.random()*bg.width;}
+    const tw = (Math.sin(t*0.002 + s.tw)+1)/2;
+    bgx.beginPath(); bgx.arc(s.x,s.y,s.r,0,TAU);
+    bgx.fillStyle = `rgba(137,207,240,${(s.a*tw).toFixed(3)})`;
+    bgx.shadowColor='rgba(137,207,240,.8)'; bgx.shadowBlur=s.r*3;
+    bgx.fill();
+  }
+  bgx.shadowBlur=0;
+  requestAnimationFrame(drawBg);
+}
+sizeBg(); requestAnimationFrame(drawBg);
+addEventListener('resize', () => { sizeBg(); fitWheel(); drawWheel(); });
+
+/* ============================================================
+   AUDIO (web audio, created on first gesture)
+   ============================================================ */
+let actx=null;
+function audio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+function tick(){
+  const a=audio(); if(!a) return;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type='square'; o.frequency.value=420+Math.random()*120;
+  g.gain.value=0.04; o.connect(g); g.connect(a.destination);
+  o.start(); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime+0.05); o.stop(a.currentTime+0.06);
+}
+function chime(){
+  const a=audio(); if(!a) return;
+  [523,659,784,1047].forEach((f,i)=>{
+    const o=a.createOscillator(), g=a.createGain();
+    o.type='triangle'; o.frequency.value=f;
+    const t=a.currentTime+i*0.09;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.14,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.4);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+0.42);
+  });
+}
+
+/* ============================================================
+   DIET CHIPS
+   ============================================================ */
+const dietEl = $('diet');
+DIETS.forEach(d=>{
+  const b=document.createElement('div');
+  b.className='chip'; b.dataset.key=d.key;
+  b.innerHTML = `<span>${d.em}</span> ${d.label}`;
+  b.onclick=()=>{
+    b.classList.toggle('active');
+    if(b.classList.contains('active')) state.restrictions.add(d.key);
+    else state.restrictions.delete(d.key);
+    buildWheel();
+  };
+  dietEl.appendChild(b);
+});
+
+/* ============================================================
+   DISTANCE SLIDER
+   ============================================================ */
+$('dist').addEventListener('input', e=>{
+  state.distance = +e.target.value;
+  $('distVal').textContent = state.distance + ' mi';
+});
+$('dist').addEventListener('change', ()=>{ if(state.loc) refetch(); });
+
+/* ============================================================
+   GEO / FETCH
+   ============================================================ */
+function haversine(a,b,c,d){
+  const R=3958.8, dLat=(c-a)*Math.PI/180, dLon=(d-b)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function setLocStatus(msg,cls){ const e=$('locStatus'); e.textContent=msg; e.className='status'+(cls?' '+cls:''); }
+
+$('useLoc').onclick=()=>{
+  audio();
+  if(!navigator.geolocation){ setLocStatus('Geolocation not supported — type a place instead.','err'); return; }
+  setLocStatus('📡 Locating you…');
+  navigator.geolocation.getCurrentPosition(
+    p=>{ state.loc={lat:p.coords.latitude, lon:p.coords.longitude}; setLocStatus('📍 Located! Finding nearby spots…','ok'); refetch(); },
+    err=>{ setLocStatus('Couldn\u2019t get GPS ('+err.message+'). Type a city/ZIP, or spin popular picks.','err'); },
+    {enableHighAccuracy:true, timeout:9000, maximumAge:60000}
+  );
+};
+
+$('goManual').onclick=geocodeManual;
+$('manualLoc').addEventListener('keydown',e=>{ if(e.key==='Enter') geocodeManual(); });
+async function geocodeManual(){
+  const q=$('manualLoc').value.trim();
+  if(!q){ setLocStatus('Type a city or ZIP first.','err'); return; }
+  setLocStatus('🔎 Looking up "'+q+'"…');
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q),
+      {headers:{'Accept':'application/json'}});
+    const d=await r.json();
+    if(!d.length){ setLocStatus('No match for "'+q+'". Try another place.','err'); return; }
+    state.loc={lat:+d[0].lat, lon:+d[0].lon};
+    setLocStatus('📍 '+(d[0].display_name||q).split(',').slice(0,2).join(',')+' — finding spots…','ok');
+    refetch();
+  }catch(e){ setLocStatus('Lookup failed (network). Spinning popular picks instead.','err'); }
+}
+
+let fetchAbort=null;
+async function refetch(){
+  if(!state.loc) return;
+  if(fetchAbort) fetchAbort.abort();
+  fetchAbort=new AbortController();
+  $('buildStatus').textContent='🔄 Searching OpenStreetMap…';
+  const meters=Math.round(state.distance*1609.34);
+  const {lat,lon}=state.loc;
+  const q=`[out:json][timeout:25];(`+
+    `node["amenity"="fast_food"](around:${meters},${lat},${lon});`+
+    `node["amenity"="restaurant"](around:${meters},${lat},${lon});`+
+    `way["amenity"="fast_food"](around:${meters},${lat},${lon});`+
+    `way["amenity"="restaurant"](around:${meters},${lat},${lon});`+
+    `);out center 120;`;
+  try{
+    const r=await fetch('https://overpass-api.de/api/interpreter',
+      {method:'POST', body:q, signal:fetchAbort.signal});
+    const d=await r.json();
+    const seen=new Set(); const out=[];
+    for(const el of (d.elements||[])){
+      const t=el.tags||{}; const name=t.name; if(!name) continue;
+      if(seen.has(name.toLowerCase())) continue; seen.add(name.toLowerCase());
+      const la=el.lat??el.center?.lat, lo=el.lon??el.center?.lon;
+      if(la==null) continue;
+      out.push({
+        label:name, type:t.amenity==='fast_food'?'fastfood':'restaurant',
+        cuisine:t.cuisine, emoji:cuisineEmoji(t.cuisine),
+        dist:haversine(lat,lon,la,lo), lat:la, lon:lo,
+      });
+    }
+    out.sort((a,b)=>a.dist-b.dist);
+    state.lastFetch=out;
+    if(out.length) setLocStatus('Found '+out.length+' places within '+state.distance+' mi.','ok');
+    else setLocStatus('No spots found within '+state.distance+' mi — try a bigger range.','err');
+    buildWheel();
+  }catch(e){
+    if(e.name==='AbortError') return;
+    $('buildStatus').textContent='';
+    setLocStatus('Search failed — using popular picks. (Overpass may be busy.)','err');
+    state.lastFetch=[];
+    buildWheel();
+  }
+}
+
+/* ============================================================
+   BUILD THE WHEEL SEGMENTS
+   ============================================================ */
+function eligibleRecipes(){
+  return RECIPES.filter(r=>[...state.restrictions].every(k=>r.tags[k]));
+}
+function buildWheel(){
+  const segs=[];
+  // restaurants (closest 9, lightly shuffled for variety)
+  let pool=state.lastFetch.slice(0,16);
+  for(let i=pool.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  pool=pool.slice(0,9);
+  if(pool.length===0){
+    // fallback chains
+    const fb=[...FALLBACK]; for(let i=fb.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[fb[i],fb[j]]=[fb[j],fb[i]];}
+    fb.slice(0,8).forEach(f=>segs.push({label:f.label, type:'fastfood', cuisine:f.cuisine, emoji:cuisineEmoji(f.cuisine), fallback:true}));
+  } else {
+    pool.forEach(p=>segs.push(p));
+  }
+  // always a cook-at-home slice (only if a recipe is eligible)
+  if(eligibleRecipes().length) segs.push({label:'Cook at Home', type:'cook', emoji:'🍳'});
+
+  // 🥚 EASTER EGG: rare mystery slice
+  if(Math.random()<0.14) segs.push({label:'Mystery Meal', type:'mystery', emoji:'🎰'});
+
+  state.segments=segs;
+  $('buildStatus').textContent = segs.length + ' options on the wheel · ' +
+    eligibleRecipes().length + ' recipes match your filters.';
+  fitWheel();
+  drawWheel();
+  $('emptyHint').style.display = segs.length<2 ? 'block':'none';
+  if(segs.length<2){ $('emptyHint').innerHTML='Add a location or loosen filters to fill the wheel 🎡'; }
+}
+
+/* ============================================================
+   DRAW + SPIN
+   ============================================================ */
+const cv=$('wheel'), cx=cv.getContext('2d');
+let R=270;
+function fitWheel(){
+  const stage=$('wheelStage');
+  const size=Math.min(stage.clientWidth||540, 540);
+  const dpr=Math.min(devicePixelRatio||1,2);
+  cv.width=Math.round(size*dpr); cv.height=Math.round(size*dpr); R=cv.width/2;
+}
+function segColor(i){ return i%2===0 ? '#0b1f3a' : '#89CFF0'; }
+function segText(i){ return i%2===0 ? '#bde0fe' : '#04162b'; }
+function drawWheel(){
+  const n=state.segments.length;
+  const w=cv.width, h=cv.height, cxp=w/2, cyp=h/2, rad=Math.min(w,h)/2-2;
+  cx.setTransform(1,0,0,1,0,0);
+  cx.clearRect(0,0,w,h);
+  if(n===0){
+    cx.fillStyle='#0b1f3a'; cx.beginPath(); cx.arc(cxp,cyp,rad,0,TAU); cx.fill();
+    cx.fillStyle='#89CFF0'; cx.font=`700 ${rad*0.12}px "Segoe UI",sans-serif`; cx.textAlign='center'; cx.textBaseline='middle';
+    cx.fillText('Spin me!',cxp,cyp);
+    return;
+  }
+  const seg=TAU/n;
+  cx.save(); cx.translate(cxp,cyp); cx.rotate(state.rotation);
+  for(let i=0;i<n;i++){
+    const a0=i*seg, a1=a0+seg;
+    cx.beginPath(); cx.moveTo(0,0); cx.arc(0,0,rad,a0,a1); cx.closePath();
+    const grad=cx.createRadialGradient(0,0,rad*0.2,0,0,rad);
+    const base=segColor(i);
+    grad.addColorStop(0, base==='#89CFF0'?'#bde0fe':'#12294a');
+    grad.addColorStop(1, base);
+    cx.fillStyle=grad; cx.fill();
+    cx.lineWidth=2; cx.strokeStyle='rgba(72,202,228,.55)'; cx.stroke();
+    // label
+    cx.save();
+    cx.rotate(a0+seg/2);
+    cx.textAlign='right'; cx.textBaseline='middle';
+    cx.fillStyle=segText(i);
+    const s=state.segments[i];
+    let txt=(s.emoji?s.emoji+' ':'')+s.label;
+    if(txt.length>20) txt=txt.slice(0,19)+'…';
+    const fs=Math.max(11, Math.min(rad*0.085, rad*0.6/Math.max(txt.length,8)*1.6));
+    cx.font=`800 ${fs}px "Segoe UI",sans-serif`;
+    cx.shadowColor='rgba(0,0,0,.35)'; cx.shadowBlur=2;
+    cx.fillText(txt, rad-14, 0);
+    cx.restore();
+  }
+  cx.restore();
+  // hub ring
+  cx.beginPath(); cx.arc(cxp,cyp,rad*0.16,0,TAU);
+  cx.fillStyle='#04162b'; cx.fill();
+  cx.lineWidth=4; cx.strokeStyle='#89CFF0'; cx.stroke();
+}
+
+function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+
+function spin(targetIndex){
+  if(state.spinning || state.segments.length<1) return;
+  audio();
+  state.spinning=true; $('spin').disabled=true; $('wheelStage').classList.add('spinning');
+  const n=state.segments.length, seg=TAU/n;
+  if(targetIndex==null) targetIndex=(Math.random()*n)|0;
+  const pointer=-Math.PI/2;
+  // land within winning segment (slight jitter, not on the edge)
+  const jitter=(Math.random()-0.5)*seg*0.6;
+  let target=pointer-(targetIndex+0.5)*seg+jitter;
+  const cur=state.rotation%TAU;
+  let delta=(target%TAU)-cur; while(delta<=0) delta+=TAU;
+  const fullSpins=(5+(Math.random()*3|0))*TAU;
+  const start=state.rotation, end=state.rotation+delta+fullSpins;
+  const dur=4200+Math.random()*800, t0=performance.now();
+  let lastTickSeg=Math.floor((start)/seg);
+  state.spins++; $('spinCount').textContent='Spins: '+state.spins;
+  if(state.spins===10) toast('🏆 Indecisive Champion! 10 spins and counting…');
+
+  (function frame(now){
+    const p=Math.min(1,(now-t0)/dur);
+    state.rotation=start+(end-start)*easeOutCubic(p);
+    const curSeg=Math.floor(state.rotation/seg);
+    if(curSeg!==lastTickSeg){ lastTickSeg=curSeg; tick(); }
+    drawWheel();
+    if(p<1) requestAnimationFrame(frame);
+    else finishSpin(targetIndex);
+  })(t0);
+}
+
+function finishSpin(idx){
+  state.spinning=false; $('spin').disabled=false; $('wheelStage').classList.remove('spinning');
+  chime();
+  const win=state.segments[idx];
+  showResult(win, idx);
+}
+
+$('spin').onclick=()=>spin(null);
+
+/* ============================================================
+   RESULT MODAL
+   ============================================================ */
+function showResult(win, idx){
+  const banner=$('resBanner'), body=$('resBody');
+  let recipeRef=null;
+
+  if(win.type==='cook'){
+    const elig=eligibleRecipes();
+    recipeRef=elig[(Math.random()*elig.length)|0];
+    renderRecipe(banner, body, recipeRef);
+  } else if(win.type==='mystery'){
+    renderMystery(banner, body);
+  } else {
+    renderPlace(banner, body, win);
+  }
+
+  // action buttons
+  const actions=document.createElement('div'); actions.className='res-actions';
+  const accept=document.createElement('button'); accept.className='btn'; accept.innerHTML='✓ Lock It In!';
+  accept.onclick=()=>{ closeResult(); toast('🎉 Dinner decided: '+(recipeRef?recipeRef.name:win.label)+'!'); celebrate(); };
+  actions.appendChild(accept);
+
+  if(win.type==='cook' && eligibleRecipes().length>1){
+    const reroll=document.createElement('button'); reroll.className='btn ghost'; reroll.innerHTML='🔄 Different Recipe';
+    reroll.onclick=()=>showResult(win, idx);
+    actions.appendChild(reroll);
+  }
+
+  const veto=document.createElement('button');
+  veto.className='btn danger';
+  if(state.vetoAvailable>0){
+    veto.innerHTML='✗ Veto ('+state.vetoAvailable+' left)';
+    veto.onclick=()=>useVeto(idx, win);
+  } else {
+    veto.innerHTML='✗ Veto used';
+    veto.disabled=true;
+  }
+  actions.appendChild(veto);
+  body.appendChild(actions);
+
+  $('overlay').classList.add('show');
+}
+
+function renderPlace(banner, body, win){
+  banner.innerHTML='';
+  banner.innerHTML=`<span class="winemoji">${win.emoji||'🍴'}</span>
+    <div class="kicker">${win.type==='fastfood'?'Fast Food / Takeout':'Restaurant'}</div>
+    <h3>${escapeHtml(win.label)}</h3>
+    <div>
+      <span class="tag">${prettyCuisine(win.cuisine)}</span>
+      ${win.dist!=null?`<span class="tag">📏 ${win.dist.toFixed(1)} mi away</span>`:''}
+      ${win.fallback?`<span class="tag">⭐ popular pick</span>`:''}
+    </div>`;
+  body.innerHTML='';
+  const p=document.createElement('p');
+  p.innerHTML = win.fallback
+    ? 'A crowd-favorite pick (no location set). Set your location to find the real spots near you!'
+    : 'The wheel has spoken! Grab your keys, or get it delivered.';
+  body.appendChild(p);
+  if(state.restrictions.size){
+    const note=document.createElement('p');
+    note.innerHTML='⚠️ <b style="color:var(--baby-soft)">Heads up:</b> you selected dietary filters — double-check the menu for '+
+      [...state.restrictions].map(k=>DIETS.find(d=>d.key===k).label).join(', ')+' options.';
+    body.appendChild(note);
+  }
+  if(win.lat){
+    const a=document.createElement('a');
+    a.className='maplink'; a.target='_blank'; a.rel='noopener';
+    a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(win.label)+'%20'+win.lat+','+win.lon;
+    a.innerHTML='🗺️ Open in Google Maps →';
+    body.appendChild(a);
+  }
+}
+
+function renderRecipe(banner, body, r){
+  banner.innerHTML=`<span class="winemoji">${r.em}</span>
+    <div class="kicker">Cook at Home · ${r.trend}</div>
+    <h3>${escapeHtml(r.name)}</h3>
+    <div><span class="tag">⏱️ ${r.time}</span>
+      ${dietTags(r)}</div>`;
+  body.innerHTML='';
+  const p=document.createElement('p'); p.textContent=r.desc; body.appendChild(p);
+
+  // shopping list
+  const st1=document.createElement('div'); st1.className='sec-title';
+  st1.innerHTML=`<span>🛒 Shopping List</span><button class="btn ghost" style="width:auto;padding:6px 12px;font-size:.78rem" id="copyShop">📋 Copy</button>`;
+  body.appendChild(st1);
+  const ul=document.createElement('ul'); ul.className='reslist shop';
+  r.shop.forEach(item=>{
+    const li=document.createElement('li');
+    li.innerHTML=`<span class="box">✓</span><span>${escapeHtml(item)}</span>`;
+    li.onclick=()=>li.classList.toggle('checked');
+    ul.appendChild(li);
+  });
+  body.appendChild(ul);
+
+  // steps
+  const st2=document.createElement('div'); st2.className='sec-title'; st2.innerHTML='<span>👩‍🍳 Recipe</span>';
+  body.appendChild(st2);
+  const ol=document.createElement('ul'); ol.className='reslist steps';
+  r.steps.forEach(s=>{ const li=document.createElement('li'); li.innerHTML=`<span>${escapeHtml(s)}</span>`; ol.appendChild(li); });
+  body.appendChild(ol);
+
+  setTimeout(()=>{ const c=$('copyShop'); if(c) c.onclick=()=>{
+    const text='🛒 '+r.name+' — Shopping List\n'+r.shop.map(x=>'• '+x).join('\n');
+    navigator.clipboard?.writeText(text).then(()=>toast('📋 Shopping list copied!'),()=>toast('Copy failed'));
+  };},0);
+}
+
+function dietTags(r){
+  const out=[];
+  if(r.tags.vegan) out.push('🌱 Vegan');
+  else if(r.tags.vegetarian) out.push('🥦 Vegetarian');
+  if(r.tags.glutenFree) out.push('🌾 GF-friendly');
+  if(r.tags.dairyFree) out.push('🥛 Dairy-free');
+  return out.map(t=>`<span class="tag">${t}</span>`).join('');
+}
+
+const MYSTERIES=[
+  {em:'🥣',t:'Cereal for Dinner',d:'Yes, really. A giant bowl of cereal is a perfectly valid adult dinner. No notes.'},
+  {em:'🍳',t:'Breakfast for Dinner',d:'Pancakes, eggs, bacon — brinner is undefeated. Flip the script tonight!'},
+  {em:'🎲',t:'Dealer\u2019s Choice',d:'Close your eyes, open the fridge, and make a meal from the first 3 things you grab.'},
+  {em:'🍿',t:'Snack Plate Supreme',d:'Cheese, crackers, olives, fruit, whatever. Build the ultimate grazing board.'},
+  {em:'📞',t:'Call Mom',d:'Ask what she\u2019s making. Invite yourself over. Genius move.'},
+  {em:'🌯',t:'Whatever\u2019s in the Freezer',d:'That mystery container from 3 weeks ago is calling. Brave soul.'},
+];
+function renderMystery(banner, body){
+  const m=MYSTERIES[(Math.random()*MYSTERIES.length)|0];
+  banner.innerHTML=`<span class="winemoji">${m.em}</span>
+    <div class="kicker">🎰 Mystery Meal — Easter Egg!</div>
+    <h3>${escapeHtml(m.t)}</h3>
+    <div><span class="tag">🎉 secret slice</span></div>`;
+  body.innerHTML='';
+  const p=document.createElement('p'); p.textContent=m.d; body.appendChild(p);
+  emojiRain('✨',18);
+}
+
+function useVeto(idx, win){
+  if(state.vetoAvailable<=0) return;
+  state.vetoAvailable--;
+  updateVeto();
+  toast('🛡️ Vetoed "'+win.label+'"! Spinning again…');
+  // remove the vetoed segment
+  state.segments.splice(idx,1);
+  closeResult();
+  fitWheel(); drawWheel();
+  if(state.segments.length<1){ buildWheel(); }
+  setTimeout(()=>spin(null), 650);
+}
+function updateVeto(){
+  const ind=$('vetoInd'), txt=$('vetoTxt');
+  if(state.vetoAvailable>0){ ind.classList.remove('used'); txt.textContent=state.vetoAvailable+' veto'+(state.vetoAvailable>1?'s':'')+' ready'; }
+  else { ind.classList.add('used'); txt.textContent='veto used — locked in next time!'; }
+}
+function grantVeto(n){ state.vetoAvailable+=n; state.vetoMax+=n; updateVeto(); }
+
+function closeResult(){ $('overlay').classList.remove('show'); }
+$('closeRes').onclick=closeResult;
+$('overlay').addEventListener('click',e=>{ if(e.target===$('overlay')) closeResult(); });
+$('reload').onclick=()=>{
+  // "new meal" — restore vetoes & rebuild
+  state.vetoAvailable=state.vetoMax; updateVeto();
+  if(state.loc) refetch(); else buildWheel();
+  toast('🍽️ Fresh meal, fresh veto. Spin away!');
+};
+
+/* ============================================================
+   FUN: toasts, confetti, emoji rain, sparks
+   ============================================================ */
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  $('toasts').appendChild(t);
+  setTimeout(()=>{ t.style.transition='opacity .4s,transform .4s'; t.style.opacity='0'; t.style.transform='translateY(12px)'; setTimeout(()=>t.remove(),420); }, 2600);
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+function emojiRain(emoji,count){
+  const layer=$('falls');
+  for(let i=0;i<count;i++){
+    const e=document.createElement('div'); e.className='fall'; e.textContent=emoji;
+    e.style.left=Math.random()*100+'vw';
+    e.style.fontSize=(1.4+Math.random()*2)+'rem';
+    const dur=2.5+Math.random()*2.5;
+    e.style.animationDuration=dur+'s';
+    e.style.animationDelay=(Math.random()*0.6)+'s';
+    layer.appendChild(e);
+    setTimeout(()=>e.remove(), (dur+0.8)*1000);
+  }
+}
+function celebrate(){
+  const e=['🎉','🎊','⭐','💙','🩵','✨','🍽️'];
+  for(let i=0;i<28;i++) setTimeout(()=>emojiRain(e[(Math.random()*e.length)|0],1), i*30);
+  chime();
+}
+function konamiBlast(){
+  emojiRain('💙',30); emojiRain('🩵',20); emojiRain('⭐',15);
+  document.body.animate([{filter:'brightness(1)'},{filter:'brightness(1.6)'},{filter:'brightness(1)'}],{duration:600});
+}
+
+/* ============================================================
+   EASTER EGGS
+   ============================================================ */
+// 1) title clicks
+let titleClicks=0;
+$('title').addEventListener('click',()=>{
+  titleClicks++;
+  const el=$('title'); el.classList.remove('wobble'); void el.offsetWidth; el.classList.add('wobble');
+  if(titleClicks===7){ toast('🥚 You found it! The wheel always knew what you wanted…'); emojiRain('🥚',12); }
+  if(titleClicks===15){ toast('🐈‍⬛ ...did you hear something?'); runCat(); }
+});
+// 2) type-a-word eggs
+let typed='';
+addEventListener('keydown',e=>{
+  if(e.key && e.key.length===1){
+    typed=(typed+e.key.toLowerCase()).slice(-12);
+    if(typed.endsWith('pizza')){ emojiRain('🍕',26); toast('🍕 PIZZA PARTY!'); }
+    if(typed.endsWith('taco')){ emojiRain('🌮',22); toast('🌮 Taco \'bout lucky!'); }
+    if(typed.endsWith('cat')){ runCat(); }
+    if(typed.endsWith('hungry')){ toast('😋 Then spin already!'); document.querySelector('.spinbtn')?.animate([{transform:'translate(-50%,-50%) scale(1)'},{transform:'translate(-50%,-50%) scale(1.25)'},{transform:'translate(-50%,-50%) scale(1)'}],{duration:500}); }
+  }
+});
+// 3) konami code -> free veto
+const KON=['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
+let kpos=0;
+addEventListener('keydown',e=>{
+  const k=(e.key||'').toLowerCase();
+  if(k===KON[kpos]){ kpos++; if(kpos===KON.length){ kpos=0; konamiBlast(); grantVeto(1); toast('👑 KONAMI! Chef Mode: +1 veto granted!'); } }
+  else kpos = (k===KON[0])?1:0;
+});
+// 4) running cat
+function runCat(){ const c=$('cat'); c.classList.remove('run'); void c.offsetWidth; c.classList.add('run'); }
+setInterval(()=>{ if(Math.random()<0.12) runCat(); }, 30000);
+// 5) console hint
+console.log('%c🍽️ Hungry for secrets?','color:#89CFF0;font-size:20px;font-weight:bold');
+console.log('%cTry: the Konami code · type "pizza" / "taco" / "cat" · click the title 7×','color:#bde0fe');
+
+/* ============================================================
+   INIT
+   ============================================================ */
+updateVeto();
+buildWheel();      // starts with popular picks until a location is set
+window.addEventListener('load', ()=>{ fitWheel(); drawWheel(); });
+</script>
+</body>
+</html>
