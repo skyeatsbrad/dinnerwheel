@@ -254,6 +254,7 @@
         <button class="btn ghost" id="reload">🔄 Rebuild Wheel</button>
       </div>
       <div class="status" id="buildStatus" style="margin-top:14px"></div>
+      <div class="status" id="trendStatus" style="margin-top:6px"></div>
     </div>
 
     <!-- ---------------- wheel ---------------- -->
@@ -310,6 +311,7 @@ const state = {
   vetoMax: 1,
   spins: 0,
   lastFetch: [],             // cached restaurants
+  trending: [],              // live daily recipes (TheMealDB)
 };
 
 /* ---------- dietary options ---------- */
@@ -448,6 +450,91 @@ const RECIPES = [
    shop:['1 lb shrimp','12 oz linguine','4 tbsp butter','5 garlic cloves','1 lemon','Red pepper flakes','Parsley','Parmesan','Salt & pepper'],
    steps:['Cook pasta; reserve water.','Sauté garlic in butter; add shrimp 2 min/side.','Add lemon juice + pepper flakes.','Toss with pasta + a splash of water; finish with parsley and parmesan.']},
 ];
+
+/* ============================================================
+   DAILY TRENDING RECIPES  (live from TheMealDB, refreshed daily)
+   ============================================================ */
+const MEALDB='https://www.themealdb.com/api/json/v1/1/random.php';
+const CAT_EMOJI={Beef:'🥩',Chicken:'🍗',Pork:'🥓',Lamb:'🍖',Goat:'🍖',Seafood:'🦐',
+  Pasta:'🍝',Dessert:'🍰',Vegetarian:'🥗',Vegan:'🌱',Breakfast:'🥞',Side:'🍽️',
+  Starter:'🥗',Miscellaneous:'🍴'};
+
+function mealEmoji(m){ return CAT_EMOJI[m.strCategory] || cuisineEmoji(m.strArea) || '🍴'; }
+
+function parseIngredients(m){
+  const out=[];
+  for(let i=1;i<=20;i++){
+    const ing=(m['strIngredient'+i]||'').trim();
+    const me=(m['strMeasure'+i]||'').trim();
+    if(ing) out.push((me && me.toLowerCase()!=='to taste' ? me+' ' : '')+ing);
+  }
+  return out;
+}
+function parseSteps(t){
+  if(!t) return ['See the linked recipe for full instructions.'];
+  let parts=t.split(/\r?\n+/).map(s=>s.trim()).filter(Boolean);
+  if(parts.length<2) parts=t.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).map(s=>s.trim()).filter(Boolean);
+  parts=parts.map(s=>s.replace(/^step\s*\d+[:.)]?\s*/i,'').replace(/^\d+[.)]\s*/,'')).filter(Boolean);
+  return parts.slice(0,14);
+}
+/* Conservative dietary inference: only assert vegetarian/vegan from category.
+   Allergy flags stay false so live recipes are skipped whenever an allergy
+   filter is active, falling back to the vetted curated list. */
+function inferTags(m){
+  const cat=(m.strCategory||'').toLowerCase();
+  const vegan=cat==='vegan';
+  return {vegetarian:vegan||cat==='vegetarian', vegan:vegan,
+    glutenFree:false, dairyFree:false, nutFree:false, eggFree:false,
+    shellfishFree:false, halal:false};
+}
+function normalizeMeal(m){
+  return {
+    name:m.strMeal, em:mealEmoji(m), time:'', area:m.strArea||'',
+    trend:(m.strArea?m.strArea+' • ':'')+'trending today',
+    desc:(m.strCategory?m.strCategory+'. ':'')+'A fresh pick pulled live today from a global recipe database.',
+    tags:inferTags(m), shop:parseIngredients(m), steps:parseSteps(m.strInstructions),
+    source:m.strSource||'', youtube:m.strYoutube||'', live:true, id:m.idMeal,
+  };
+}
+function setTrendStatus(msg){ const e=$('trendStatus'); if(e) e.textContent=msg; }
+function afterTrending(src){
+  setTrendStatus('🔥 '+state.trending.length+' trending recipes loaded today'+
+    (src==='cache'?' (cached)':'')+' + '+RECIPES.length+' curated classics — refreshed daily.');
+  buildWheel();
+}
+async function loadTrendingDaily(){
+  const today=new Date().toISOString().slice(0,10);
+  const key='dw_trending_'+today;
+  try{
+    const cached=localStorage.getItem(key);
+    if(cached){ const arr=JSON.parse(cached); if(arr && arr.length){ state.trending=arr; afterTrending('cache'); return; } }
+  }catch(e){}
+  setTrendStatus('🔥 Checking today\u2019s trending recipes\u2026');
+  try{
+    const N=10;
+    const results=await Promise.allSettled(
+      Array.from({length:N},()=>fetch(MEALDB).then(r=>r.json())));
+    const seen=new Set(); const meals=[];
+    for(const res of results){
+      if(res.status==='fulfilled' && res.value && res.value.meals){
+        const m=res.value.meals[0];
+        if(m && m.strMeal && !seen.has(m.idMeal)){ seen.add(m.idMeal); meals.push(normalizeMeal(m)); }
+      }
+    }
+    if(meals.length){
+      state.trending=meals;
+      try{
+        localStorage.setItem(key, JSON.stringify(meals));
+        const stale=[];
+        for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i);
+          if(k && k.indexOf('dw_trending_')===0 && k!==key) stale.push(k); }
+        stale.forEach(k=>localStorage.removeItem(k));
+      }catch(e){}
+      afterTrending('live');
+    } else { setTrendStatus('Using curated trending picks (live feed unavailable right now).'); }
+  }catch(e){ setTrendStatus('Using curated trending picks (offline).'); }
+}
+function allRecipes(){ return RECIPES.concat(state.trending||[]); }
 
 /* ============================================================
    BACKGROUND PARTICLES
@@ -629,7 +716,7 @@ async function refetch(){
    BUILD THE WHEEL SEGMENTS
    ============================================================ */
 function eligibleRecipes(){
-  return RECIPES.filter(r=>[...state.restrictions].every(k=>r.tags[k]));
+  return allRecipes().filter(r=>[...state.restrictions].every(k=>r.tags[k]));
 }
 function buildWheel(){
   const segs=[];
@@ -832,13 +919,29 @@ function renderPlace(banner, body, win){
 }
 
 function renderRecipe(banner, body, r){
+  const tags=[];
+  if(r.time) tags.push(`<span class="tag">⏱️ ${escapeHtml(r.time)}</span>`);
+  if(r.area) tags.push(`<span class="tag">🌍 ${escapeHtml(r.area)}</span>`);
+  if(r.live) tags.push(`<span class="tag">🔥 trending today</span>`);
   banner.innerHTML=`<span class="winemoji">${r.em}</span>
-    <div class="kicker">Cook at Home · ${r.trend}</div>
+    <div class="kicker">Cook at Home · ${escapeHtml(r.trend)}</div>
     <h3>${escapeHtml(r.name)}</h3>
-    <div><span class="tag">⏱️ ${r.time}</span>
-      ${dietTags(r)}</div>`;
+    <div>${tags.join('')}${dietTags(r)}</div>`;
   body.innerHTML='';
   const p=document.createElement('p'); p.textContent=r.desc; body.appendChild(p);
+  if(r.live){
+    const note=document.createElement('p');
+    note.style.cssText='font-size:.82rem;margin-top:-2px';
+    note.innerHTML='🔥 <b style="color:var(--baby-soft)">Fresh today</b> — pulled live from a global recipe database. ⚠️ Always double-check ingredients against your own allergies.';
+    body.appendChild(note);
+    if(r.source||r.youtube){
+      const links=document.createElement('p'); links.style.fontSize='.85rem';
+      links.innerHTML=(r.youtube?`<a class="maplink" target="_blank" rel="noopener" href="${escapeHtml(r.youtube)}">📺 Watch how-to</a>`:'')+
+        (r.youtube&&r.source?' &nbsp;·&nbsp; ':'')+
+        (r.source?`<a class="maplink" target="_blank" rel="noopener" href="${escapeHtml(r.source)}">🔗 Full recipe</a>`:'');
+      body.appendChild(links);
+    }
+  }
 
   // shopping list
   const st1=document.createElement('div'); st1.className='sec-title';
@@ -1000,6 +1103,7 @@ updateVeto();
 buildWheel();      // starts with popular picks until a location is set
 if(!window.isSecureContext){ setLocStatus('Heads up: GPS needs a secure https:// connection. On http, type your city or ZIP below 👇 (or just spin the popular picks).'); }
 window.addEventListener('load', ()=>{ fitWheel(); drawWheel(); });
+loadTrendingDaily();   // refresh the cook-at-home picks from today's live feed
 </script>
 </body>
 </html>
